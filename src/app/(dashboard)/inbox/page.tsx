@@ -219,6 +219,7 @@ export default function InboxPage() {
             );
             return [...withoutOptimistic, newMsg];
           });
+          fetch(`/api/conversations/${newMsg.conversation_id}/read`, { method: "POST" }).catch(() => {});
         }
 
         // Update conversation list preview. We need to know *synchronously*
@@ -413,19 +414,16 @@ export default function InboxPage() {
         if (activeConversation?.id === deepLinkConvId) return;
         const match = loaded.find((c) => c.id === deepLinkConvId);
         if (match) {
-          setActiveConversation(match);
+          setActiveConversation({ ...match, unread_count: 0 });
           setActiveContact(match.contact ?? null);
           setMessages([]);
-          // Mirror the optimistic unread reset that handleSelectConversation
-          // does — the user just deep-linked into this conv, treat that the
-          // same as a click. Leaves activeConversation.unread_count alone so
-          // the MessageThread reset effect still fires the server UPDATE.
           if (match.unread_count > 0) {
             setConversations((prev) =>
               prev.map((c) =>
                 c.id === match.id ? { ...c, unread_count: 0 } : c,
               ),
             );
+            fetch(`/api/conversations/${match.id}/read`, { method: "POST" }).catch(() => {});
           }
         }
       }
@@ -440,25 +438,17 @@ export default function InboxPage() {
       // when conversationId changes — so messages would stay empty until
       // the user navigated away and back. Bail out early instead.
       if (activeConversation?.id === conv.id) return;
-      setActiveConversation(conv);
+      setActiveConversation({ ...conv, unread_count: 0 });
       setActiveContact(conv.contact ?? null);
       setMessages([]);
-      // Optimistically clear the unread badge for this conv. The
-      // server-side reset is fired by the unread-reset effect inside
-      // MessageThread (which reads activeConversation.unread_count, not
-      // the list copy — so we deliberately leave that intact below to
-      // keep the effect firing), and the realtime UPDATE that comes
-      // back will sync to 0 again as a no-op. Zeroing the list copy
-      // here means the user sees the badge disappear the instant they
-      // click instead of waiting for the round-trip — and it persists
-      // even if the realtime UPDATE is dropped.
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conv.id && c.unread_count > 0
-            ? { ...c, unread_count: 0 }
-            : c,
-        ),
-      );
+      if (conv.unread_count > 0) {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conv.id ? { ...c, unread_count: 0 } : c,
+          ),
+        );
+        fetch(`/api/conversations/${conv.id}/read`, { method: "POST" }).catch(() => {});
+      }
       // Record the selection on the deep-link ref BEFORE we change the
       // URL. The router.replace below flips `deepLinkConvId`, which can
       // in turn cause ConversationList to refetch and eventually call

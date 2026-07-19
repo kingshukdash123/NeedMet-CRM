@@ -420,14 +420,9 @@ export function MessageThread({
   // is 0 the condition is false, so no further UPDATE is issued.
   useEffect(() => {
     if (!conversationId || !hasUnread) return;
-    const supabase = createClient();
-    supabase
-      .from("conversations")
-      .update({ unread_count: 0 })
-      .eq("id", conversationId)
-      .then(({ error }) => {
-        if (error) console.error("Failed to reset unread_count:", error);
-      });
+    fetch(`/api/conversations/${conversationId}/read`, { method: "POST" }).catch((err) => {
+      console.error("Failed to reset unread_count:", err);
+    });
   }, [conversationId, hasUnread]);
 
   // Auto-scroll to bottom on new messages

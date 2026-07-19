@@ -39,6 +39,7 @@ function SignupPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [codeWord, setCodeWord] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -55,6 +56,11 @@ function SignupPageInner() {
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!inviteToken && codeWord.trim() !== "NeedMet-WACRM-2026") {
+      setError("Invalid signup code word");
       return;
     }
 
@@ -214,6 +220,23 @@ function SignupPageInner() {
                 className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
               />
             </div>
+
+            {!inviteToken && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="codeWord" className="text-muted-foreground">
+                  Signup Code Word
+                </Label>
+                <Input
+                  id="codeWord"
+                  type="password"
+                  placeholder="Enter the registration code word"
+                  value={codeWord}
+                  onChange={(e) => setCodeWord(e.target.value)}
+                  required
+                  className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
+                />
+              </div>
+            )}
 
             <Button
               type="submit"
