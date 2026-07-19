@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,8 @@ interface ContactWithTags extends Contact {
 
 export default function ContactsPage() {
   const supabase = createClient();
-  const canEdit = useCan('send-messages');
+  const { accountRole } = useAuth();
+  const canEdit = useCan('send-messages') || accountRole === 'viewer';
   const canEditSettings = useCan('edit-settings');
 
   const [contacts, setContacts] = useState<ContactWithTags[]>([]);

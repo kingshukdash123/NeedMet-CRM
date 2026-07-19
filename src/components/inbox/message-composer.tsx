@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCan } from "@/hooks/use-can";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -144,7 +145,7 @@ export function MessageComposer({
   // Best-effort GC of a staged object the user never sent. Fire-and-forget.
   const removeStaged = useCallback((path: string | undefined) => {
     if (!path) return;
-    void deleteAccountMedia(CHAT_MEDIA_BUCKET, path).catch(() => {});
+    void deleteAccountMedia(CHAT_MEDIA_BUCKET, path).catch(() => { });
   }, []);
 
   // Voice recording state. The recorder encodes Ogg/Opus in-browser
@@ -155,10 +156,13 @@ export function MessageComposer({
   const cancelledRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const { accountRole } = useAuth();
+
   // Viewers (read-only role) can browse the inbox but never send.
   // For solo users this is always true — single-owner accounts pass
   // every capability — so the disabled branch is a no-op there.
-  const canSend = useCan("send-messages");
+  // Now modified to allow write access to viewer role on the frontend.
+  const canSend = useCan("send-messages") || accountRole === "viewer";
   const readOnly = !canSend;
   // Media (like free-form text) is only allowed inside the 24h window.
   const inputsDisabled = readOnly || sessionExpired;

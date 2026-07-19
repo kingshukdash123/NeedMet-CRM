@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/flows/admin-client'
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
       }
 
       const resolved = await findOrCreateConversation(
-        supabase,
+        supabaseAdmin(),
         accountId,
         user.id,
         contact_id
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
     // `SendMessageError` carries a machine code + HTTP status; the
     // dashboard maps it to the internal `{ error }` shape.
     try {
-      const result = await sendMessageToConversation(supabase, accountId, {
+      const result = await sendMessageToConversation(supabaseAdmin(), accountId, {
         conversationId,
         messageType: message_type,
         contentText: content_text,
