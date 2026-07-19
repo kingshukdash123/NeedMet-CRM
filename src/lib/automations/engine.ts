@@ -176,6 +176,21 @@ export async function resumePendingExecution(pending: {
 async function executeAutomation(automation: Automation, input: DispatchInput) {
   const db = supabaseAdmin()
 
+  // Guard against duplicate rapid execution (within 3 seconds) for the same conversation.
+  if (input.context?.conversation_id) {
+    const threeSecondsAgo = new Date(Date.now() - 3000).toISOString()
+    const { count: recentBotMsgs } = await db
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('conversation_id', input.context.conversation_id)
+      .eq('sender_type', 'bot')
+      .gte('created_at', threeSecondsAgo)
+
+    if ((recentBotMsgs ?? 0) > 0) {
+      return
+    }
+  }
+
   const { data: log, error: logErr } = await db
     .from('automation_logs')
     .insert({
@@ -651,12 +666,20 @@ export function triggerMatches(automation: Automation, ctx: AutomationContext | 
   if (automation.trigger_type === 'keyword_match') {
     const cfg = automation.trigger_config as KeywordMatchTriggerConfig
     if (!cfg?.keywords || cfg.keywords.length === 0) return false
-    const text = (ctx?.message_text ?? '').toString()
+    const text = (ctx?.message_text ?? '').toString().trim()
     if (!text) return false
     const haystack = cfg.case_sensitive ? text : text.toLowerCase()
     return cfg.keywords.some((raw) => {
-      const k = cfg.case_sensitive ? raw : raw.toLowerCase()
-      return cfg.match_type === 'exact' ? haystack === k : haystack.includes(k)
+      const k = (cfg.case_sensitive ? raw : raw.toLowerCase()).trim()
+      if (!k) return false
+      if (cfg.match_type === 'exact') {
+        return haystack === k
+      }
+      // For 'contains', use word-boundary matching so single-letter or short keywords (like "k" or "yo")
+      // do not falsely match inside unrelated words ("thanks", "see you").
+      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`(?:^|\\s|\\b)${escaped}(?:$|\\s|\\b)`, cfg.case_sensitive ? '' : 'i')
+      return regex.test(text)
     })
   }
 

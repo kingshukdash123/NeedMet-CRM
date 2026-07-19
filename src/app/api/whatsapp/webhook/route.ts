@@ -694,6 +694,7 @@ async function processMessage(
       last_message_text: contentText || `[${message.type}]`,
       last_message_at: new Date().toISOString(),
       unread_count: (conversation.unread_count || 0) + 1,
+      status: conversation.status === 'closed' ? 'open' : conversation.status,
       updated_at: new Date().toISOString(),
     })
     .eq('id', conversation.id)
@@ -782,7 +783,7 @@ async function processMessage(
   if (contactOutcome.wasCreated) automationTriggers.unshift('new_contact_created')
   if (isFirstInboundMessage) automationTriggers.unshift('first_inbound_message')
   for (const triggerType of automationTriggers) {
-    runAutomationsForTrigger({
+    await runAutomationsForTrigger({
       accountId,
       triggerType,
       contactId: contactRecord.id,
